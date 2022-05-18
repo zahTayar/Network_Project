@@ -1,0 +1,8 @@
+
+
+
+CREATE TABLE USERS(email varchar(255) NOT NULL,password varchar(255) NOT NULL);
+CREATE TABLE CUSTOMERS(f_name varchar(255) NOT NULL,l_name varchar(255) NOT NULL);
+CREATE TABLE CODES(email varchar(255) NOT NULL,code int NOT NULL);
+CREATE TABLE PASSWORDS(email varchar(255) NOT NULL,password_str varchar(255) NOT NULL);
+

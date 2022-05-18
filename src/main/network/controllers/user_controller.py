@@ -3,8 +3,10 @@ from flask import request
 
 from flask import Blueprint, render_template, session, abort
 
-app_file4 = Blueprint('app_file4', __name__)
+from src.main.network.logic.user_services import user_service
 
+app_file4 = Blueprint('app_file4', __name__)
+service = user_service()
 
 @app_file4.route('/network/users/login/<user_email>/<user_pass>', methods=["GET"])
 def login(user_email, user_pass) -> json:
