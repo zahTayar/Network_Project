@@ -18,7 +18,7 @@ class password_checker:
         self.login_tries = config.login_tries
 
     def check_password(self, password):
-        if len(password) > self.password_count:
+        if len(password) < self.password_count:
             raise Exception("password digits less than" + self.password_count)
         for item in self.password_structure:
             if not self.check_structure(item, password):
