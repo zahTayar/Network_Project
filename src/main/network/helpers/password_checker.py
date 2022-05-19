@@ -39,3 +39,4 @@ class password_checker:
             return any(c in special_characters for c in password)
         return False
 
+
