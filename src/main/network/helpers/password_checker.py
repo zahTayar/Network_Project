@@ -36,4 +36,4 @@ class password_checker:
         }
 
 
-password_checker = password_checker()
+
