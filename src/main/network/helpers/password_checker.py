@@ -28,12 +28,15 @@ class password_checker:
                 raise Exception("password in word bank")
 
     def check_structure(self, item, password):
-        return {
-            "Big": any(password.isupper() for ele in password),
-            "Small": any(password.islower() for ele in password),
-            "Digit": any(password.isdigit() for ele in password),
-            "Special": bool(re.match('^[a-zA-Z0-9]*$', password)) == True
-        }
-
+        special_characters = "!@#$%^&*()-+?_=,<>/"
+        if item == "Big":
+            return any(ele.isupper() for ele in password)
+        if item == "Small":
+            return any(ele.islower() for ele in password)
+        if item == "Digits":
+            return any(ele.isdigit() for ele in password)
+        if item == "Special":
+            return any(c in special_characters for c in password)
+        return False
 
 
