@@ -27,7 +27,6 @@ class password_checker:
             if word == password:
                 raise Exception("password in word bank")
 
-
     def check_structure(self, item, password):
         return {
             "Big": any(password.isupper() for ele in password),
