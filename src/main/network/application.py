@@ -25,7 +25,7 @@ class user_service():
         return self.cursor
 
     def check_last_three(self, password_str,password_from_db):
-        lis = password_from_db.split(' ')
+        lis = password_from_db.split('|')
         counter = 0
         for i in reversed(lis):
             if i == password_str :
@@ -38,10 +38,10 @@ class user_service():
 
     def send_email_with_update(self,email):
         email_address = 'fma.finalproject2022@yahoo.com'
-        subject = 'Subject: We Found New Apartments For You!\n\n'
+        subject = 'Subject: Code for verify you own this account!\n\n'
         passcode = 'zkykgdjwieuikyrf'
         random_code = random.randint(1000,9999)
-        content = 'Hello, \nThe code for change the password is \n\n.' +random_code
+        content = 'Hello, \nThe code for change the password is \n\n.' + str(random_code)
         footer = "Thank you."
         global conn
         try:
@@ -49,7 +49,7 @@ class user_service():
             conn.ehlo()
             conn.login(email_address, passcode)
         except smtplib.SMTPException as e:
-            print(e)
+            Exception(e)
         if email is None:
             Exception("There are no users in the system")
             return
@@ -62,7 +62,7 @@ class user_service():
                 Exception(e)
                 conn.quit()
         conn.quit()
-        return random_code
+        return str(random_code)
 
 @app.route('/network/users/login/<user_email>/<user_pass>', methods=["GET"])
 def login(user_email, user_pass) -> json:
@@ -88,7 +88,7 @@ def register() -> json:
         raise Exception("User already exist, please try again :)")
     helper = password_checker()
     helper.check_password(request.get_json()["password"])
-    service.get_cursor().execute('''Insert into passwords(email,password_str) values('%s','%s');''' % (request.get_json()["email"] , request.get_json()["password"]))
+    service.get_cursor().execute('''Insert into passwords(email,password_str) values('%s','%s');''' % (request.get_json()["email"] , str(request.get_json()["password"])))
     service.get_cursor().execute('''Insert into users(email,password) values('%s','%s');''' % (request.get_json()["email"] , request.get_json()["password"]))
     mysql.connection.commit()
     return {"status":"200ok","result":True ,"message":"user created successfully"}  # succes/not
@@ -103,15 +103,18 @@ def update_password(user_email) -> json:
         helper.check_password(request.get_json()["password"])
         service.get_cursor().execute('''select password_str from passwords where email LIKE '%s' ''' % user_email)
         result_password = service.get_cursor().fetchone()
-        if service.check_last_three(str(request.get_json()["password"]),result_password):
+        result_password = ','.join(result_password)
+        if not service.check_last_three(str(request.get_json()["password"]),result_password):
             raise Exception("You cant use password that you have used in the last three updates")
         result_str = str(result_password)
-        result_str += " " + request.get_json()["password"]
+        result_str += "|" + request.get_json()["password"]
         service.get_cursor().execute('''UPDATE USERS 
                                         SET password=%s 
                                         WHERE email LIKE %s
                                         ''' , (request.get_json()["password"],user_email))
-        service.get_cursor().execute('''UPDATE passwords SET password_str=%s WHERE (email LIKE %s) ''' , (result_str, user_email))
+        service.get_cursor().execute('''UPDATE passwords.
+                                        SET (password_str=%s) 
+                                        WHERE (email LIKE %s) ''' , (result_str, user_email))
         mysql.connection.commit()
     else:
         raise Exception("user not exist")
@@ -124,10 +127,10 @@ def send_code_to_mail(user_email) -> json:
     if service.get_cursor().execute('''select email from users where email LIKE '%s' LIMIT 1;''' % user_email) ==0:
         raise  Exception("User not exist in our systems.")
     code = service.send_email_with_update(user_email)
-    if service.get_cursor().execute('''select email from codes where email LIKE %s''' %user_email) == 0 :
-        service.get_cursor().execute('''Insert into codes(email,code) values('%s' '%d')'''%(user_email,code))
+    if service.get_cursor().execute('''select email from codes where email LIKE '%s' ''' % user_email) == 0 :
+        service.get_cursor().execute('''Insert into codes(email,code) values('%s', '%s')'''%(user_email,code))
     else:
-        service.get_cursor().execute('''UPDATE CODES SET code = '%d' ''' % code)
+        service.get_cursor().execute('''UPDATE CODES SET code = '%s' ''' % code)
     mysql.connection.commit()
     return  {"status":"200ok","result":True ,"message":"code sent via email."} # code
 
@@ -135,9 +138,10 @@ def send_code_to_mail(user_email) -> json:
 @app.route('/network/users/verify_code/<user_email>', methods=["POST"])
 def verify_code_entered(user_email) -> json:
     service = user_service()
-    service.get_cursor().execute('''select code from codes where email LIKE '%s' ''' % request.get_json()['email'])
+    service.get_cursor().execute('''select code from codes where email LIKE '%s' ''' % user_email)
     code_from_db = service.get_cursor().fetchone()
-    if not code_from_db == request.get_json()['code']:
+
+    if not code_from_db[0] == request.get_json()['code']:
         raise Exception('Code not fit. \n Please try again.')
     return {"status":"200ok","result":True ,"message":"code entered succussfully"}  # yes/not
 
