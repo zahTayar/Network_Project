@@ -66,6 +66,8 @@ class user_service():
 
 @app.route('/network/users/login/<user_email>/<user_pass>', methods=["GET"])
 def login(user_email, user_pass) -> json:
+    if config.login_tries <= 0:
+        raise Exception("You have tried more then three times to login.")
     service = user_service()
     service.get_cursor().execute('''select email,password from users where email LIKE '%s' LIMIT 1;''' % user_email)
     result = service.get_cursor().fetchone()
@@ -73,7 +75,7 @@ def login(user_email, user_pass) -> json:
         return {"status":"200ok","result":False}
     if result[1] != user_pass:
         config.login_tries-=1
-        if config.login_tries == 0:
+        if config.login_tries <= 0:
             raise Exception("You have tried more then three times to login.")
         raise Exception("Wrong password entered." + str(config.login_tries))
     config.login_tries = 3
