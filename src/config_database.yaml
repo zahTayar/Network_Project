@@ -4,6 +4,13 @@ CREATE DATABASE network_project;
 use network_project;
 CREATE TABLE USERS(email varchar(255) NOT NULL,password varchar(255) NOT NULL, primary key(email));
 CREATE TABLE CUSTOMERS(f_name varchar(255) NOT NULL,l_name varchar(255) NOT NULL);
-CREATE TABLE CODES(email varchar(255) NOT NULL,code int NOT NULL, primary key(email));
+CREATE TABLE CODES(email varchar(255) NOT NULL,code varchar(255) NOT NULL, primary key(email));
 CREATE TABLE PASSWORDS(email varchar(255) NOT NULL,password_str varchar(255) NOT NULL, primary key(email));
+USE network_project;
+
+
+SELECT * FROM USERS;
+SELECT * FROM CODES;
+SELECT * FROM PASSWORDS;
+SELECT * FROM CUSTOMERS;
 
