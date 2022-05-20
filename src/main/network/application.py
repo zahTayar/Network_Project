@@ -3,8 +3,7 @@ import random
 from flask import Flask
 from flask_mysqldb import MySQL
 import json
-import hmac
-import os
+from src.main.network.helpers.encrypt_passwords import encrypt_passwords
 from flask import request
 from flask_cors import CORS
 from src.main.network.helpers.config import config
@@ -70,6 +69,7 @@ class user_service():
 
 @app.route('/network/users/login/<user_email>/<user_pass>', methods=["GET"])
 def login(user_email, user_pass) -> json:
+    e = encrypt_passwords()
     if config.login_tries <= 0:
         raise Exception("You have tried more then three times to login.")
     service = user_service()
@@ -77,7 +77,7 @@ def login(user_email, user_pass) -> json:
     result = service.get_cursor().fetchone()
     if len(result) == 0:
         return {"status": "200ok", "result": False}
-    if result[1] != user_pass:
+    if not e.compare(user_pass, result[1]):
         config.login_tries -= 1
         if config.login_tries <= 0:
             raise Exception("You have tried more then three times to login.")
@@ -88,6 +88,7 @@ def login(user_email, user_pass) -> json:
 
 @app.route('/network/users', methods=["POST"])
 def register() -> json:
+    e = encrypt_passwords()
     service = user_service()
     service.get_cursor().execute(
         '''select email,password from users where email LIKE '%s' LIMIT 1;''' % request.get_json()["email"])
@@ -97,15 +98,16 @@ def register() -> json:
     helper = password_checker()
     helper.check_password(request.get_json()["password"])
     service.get_cursor().execute('''Insert into passwords(email,password_str) values('%s','%s');''' % (
-    request.get_json()["email"], str(request.get_json()["password"])))
+        request.get_json()["email"], str(e.encode(request.get_json()["password"]))))
     service.get_cursor().execute('''Insert into users(email,password) values('%s','%s');''' % (
-    request.get_json()["email"], request.get_json()["password"]))
+        request.get_json()["email"], e.encode(str(request.get_json()["password"]))))
     mysql.connection.commit()
     return {"status": "200ok", "result": True, "message": "user created successfully"}  # succes/not
 
 
 @app.route('/network/users/<user_email>', methods=["PUT"])
 def update_password(user_email) -> json:
+    e = encrypt_passwords()
     service = user_service()
     service.get_cursor().execute('''select email,password from users where email LIKE '%s' LIMIT 1;''' % user_email)
     result = service.get_cursor().fetchone()
@@ -118,9 +120,9 @@ def update_password(user_email) -> json:
         if not service.check_last_three(str(request.get_json()["password"]), result_password):
             raise Exception("You cant use password that you have used in the last three updates")
         result_str = str(result_password)
-        result_str += "|" + request.get_json()["password"]
+        result_str += "|" + e.encode(request.get_json()["password"])
         service.get_cursor().execute("UPDATE users SET password = %s WHERE email = %s",
-                                     (request.get_json()["password"], user_email,))
+                                     (e.encode(request.get_json()["password"]), user_email,))
         service.get_cursor().execute("UPDATE passwords SET password_str = %s WHERE email = %s",
                                      (result_str, user_email,))
         mysql.connection.commit()
@@ -131,25 +133,28 @@ def update_password(user_email) -> json:
 
 @app.route('/network/users/send_code/<user_email>', methods=["GET"])
 def send_code_to_mail(user_email) -> json:
+    e = encrypt_passwords()
     service = user_service()
     if service.get_cursor().execute('''select email from users where email LIKE '%s' LIMIT 1;''' % user_email) == 0:
         raise Exception("User not exist in our systems.")
     code = service.send_email_with_update(user_email)
     if service.get_cursor().execute('''select email from codes where email LIKE '%s' ''' % user_email) == 0:
-        service.get_cursor().execute('''Insert into codes(email,code) values('%s', '%s')''' % (user_email, code))
+        service.get_cursor().execute(
+            '''Insert into codes(email,code) values('%s', '%s')''' % (user_email, e.encode(code)))
     else:
-        service.get_cursor().execute('''UPDATE CODES SET code = '%s' ''' % code)
+        service.get_cursor().execute('''UPDATE CODES SET code = '%s' ''' % e.encode(code))
     mysql.connection.commit()
     return {"status": "200ok", "result": True, "message": "code sent via email."}  # code
 
 
 @app.route('/network/users/verify_code/<user_email>', methods=["POST"])
 def verify_code_entered(user_email) -> json:
+    e = encrypt_passwords()
     service = user_service()
     service.get_cursor().execute('''select code from codes where email LIKE '%s' ''' % user_email)
     code_from_db = service.get_cursor().fetchone()
-
-    if not int(code_from_db[0]) == int(request.get_json()['code']):
+    e.compare(request.get_json()['code'], code_from_db[0])
+    if not e.compare(request.get_json()['code'], code_from_db[0]):
         raise Exception('Code not fit. \n Please try again.')
     return {"status": "200ok", "result": True, "message": "code entered succussfully"}  # yes/not
 
@@ -157,10 +162,12 @@ def verify_code_entered(user_email) -> json:
 @app.route('/network/clients', methods=["POST"])
 def create_new_client() -> json:
     service = user_service()
+    f_name = request.get_json()["f_name"]
+    l_name = request.get_json()["l_name"]
     service.get_cursor().execute('''Insert into customers(f_name,l_name) values('%s','%s');''' % (
-    request.get_json()["f_name"], request.get_json()["l_name"]))
+        f_name, l_name))
     mysql.connection.commit()
-    return {"status": "200ok", "result": True, "message": "customer created succussfully"}  # created user
+    return {"status": eval(f_name), "result": True, "message": "customer created succussfully"}  # created user
 
 
 if __name__ == '__main__':
