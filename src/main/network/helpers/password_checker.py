@@ -1,5 +1,4 @@
 from src.main.network.helpers.config import config
-import re
 
 
 class password_checker:
@@ -28,7 +27,7 @@ class password_checker:
                 raise Exception("password in word bank")
 
     def check_structure(self, item, password):
-        special_characters = "!@#$%^&*()-+?_=,<>/"
+        special_characters = "!@$%^&*()-+?_=,<>/"
         if item == "Big":
             return any(ele.isupper() for ele in password)
         if item == "Small":
@@ -38,5 +37,3 @@ class password_checker:
         if item == "Special":
             return any(c in special_characters for c in password)
         return False
-
-

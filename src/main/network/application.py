@@ -4,16 +4,16 @@ from flask import Flask
 from flask_mysqldb import MySQL
 import json
 from flask import request
-
+from flask_cors import CORS
 from src.main.network.helpers.config import config
 from src.main.network.helpers.password_checker import password_checker
 
 app = Flask(__name__)
-
+CORS(app)
 # MYSQL config
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
-app.config['MYSQL_PASSWORD'] = '123456'
+app.config['MYSQL_PASSWORD'] = 'w4ap3kwo'
 app.config['MYSQL_DB'] = 'network_project'
 
 mysql = MySQL(app)
@@ -75,7 +75,7 @@ def login(user_email, user_pass) -> json:
         config.login_tries-=1
         if config.login_tries == 0:
             raise Exception("You have tried more then three times to login.")
-        raise Exception("Wrong password entered.")
+        raise Exception("Wrong password entered." + str(config.login_tries))
     config.login_tries = 3
     return {"status":"200ok","result":True,"message":"login succussfuly"}  # succes/not
 
@@ -108,13 +108,8 @@ def update_password(user_email) -> json:
             raise Exception("You cant use password that you have used in the last three updates")
         result_str = str(result_password)
         result_str += "|" + request.get_json()["password"]
-        service.get_cursor().execute('''UPDATE USERS 
-                                        SET password=%s 
-                                        WHERE email LIKE %s
-                                        ''' , (request.get_json()["password"],user_email))
-        service.get_cursor().execute('''UPDATE passwords.
-                                        SET (password_str=%s) 
-                                        WHERE (email LIKE %s) ''' , (result_str, user_email))
+        service.get_cursor().execute("UPDATE users SET password = %s WHERE email = %s",(request.get_json()["password"], user_email,))
+        service.get_cursor().execute("UPDATE passwords SET password_str = %s WHERE email = %s", (result_str, user_email,))
         mysql.connection.commit()
     else:
         raise Exception("user not exist")
@@ -141,7 +136,7 @@ def verify_code_entered(user_email) -> json:
     service.get_cursor().execute('''select code from codes where email LIKE '%s' ''' % user_email)
     code_from_db = service.get_cursor().fetchone()
 
-    if not code_from_db[0] == request.get_json()['code']:
+    if not int(code_from_db[0]) == int(request.get_json()['code']):
         raise Exception('Code not fit. \n Please try again.')
     return {"status":"200ok","result":True ,"message":"code entered succussfully"}  # yes/not
 
